@@ -1,53 +1,63 @@
 package com.wojciechdm.contacts;
 
-import java.io.*;
-import java.util.List;
+import lombok.AllArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 
-public class ContactsService {
-	private ContactsDao contactsDao;	
-	private ContactsReaderFactory contactsReaderFactory;
-	private ContactsConverterFactory contactsConverterFactory;
-	private FileFormatChecker fileFormatChecker;
-	
-	public ContactsService() {
-		contactsDao=new ContactsDao();
-		contactsReaderFactory=new ContactsReaderFactory();
-		contactsConverterFactory=new ContactsConverterFactory();
-		fileFormatChecker=new FileFormatChecker();
-	}
-	
-	public void addContactsFromFileToDatabase(String path) {
-		List<Customer> customersList;
-		String[] data;
-		FileFormat fileFormat=fileFormatChecker.getFileFormat(path);
-		ContactsConverter contactsConverter=contactsConverterFactory.getContactsConverter(fileFormat);
-		
-		try (ContactsReader contactsReader=contactsReaderFactory.getContactsReader(path, fileFormat)){			
-			while(contactsReader.hasMoreData()) {
-				data=contactsReader.readData();
-				contactsConverter.convertContacts(data);
-				customersList=contactsConverter.getCustomersList();
-				setCustomerId(customersList);
-				contactsDao.saveContacts(customersList);
-			}
-		} catch (FileNotFoundException e) {
-			e.printStackTrace();
-		} catch (IOException e) {
-			e.printStackTrace();
-		}
-	}
-	
-	private void setCustomerId(List<Customer> customersList){
-		Long customerId=contactsDao.getLastCustomerId();
-		List<Contact> contactsList;
-		
-		for(Customer customer: customersList) {
-			customerId++;
-			customer.setId(customerId);
-			contactsList=customer.getContactsList();
-			for (Contact contact: contactsList) {
-				contact.setCustomerId(customerId);
-			}
-		}
-	}
+import java.io.*;
+import java.util.*;
+
+@Slf4j
+@AllArgsConstructor
+class ContactsService {
+
+  private final ContactsDao contactsDao;
+  private final ContactsReaderFactory contactsReaderFactory;
+  private final ContactsConverterFactory contactsConverterFactory;
+  private final FileFormatChecker fileFormatChecker;
+
+  void parseAndSaveContacts(File file) {
+    FileFormat fileFormat = fileFormatChecker.recognizeFileFormat(file);
+    ContactsParser contactsParser = contactsConverterFactory.getContactsConverter(fileFormat);
+
+    try (ContactsReader contactsReader =
+        contactsReaderFactory.getContactsReader(file, fileFormat)) {
+
+      String[] data;
+      do {
+        data = contactsReader.readData();
+        if (Objects.nonNull(data)) {
+          contactsDao.save(setCustomersIds(contactsParser.parse(data)));
+        }
+      } while (Objects.nonNull(data[0]));
+
+    } catch (IOException exception) {
+      log.error("Problem with file", exception);
+    }
+  }
+
+  private List<Customer> setCustomersIds(List<Customer> customers) {
+    long customerId = contactsDao.fetchLastCustomerId();
+    List<Customer> resultCustomers = new LinkedList<>();
+
+    for (Customer customer : customers) {
+
+      customerId++;
+      List<Contact> contacts = new LinkedList<>();
+
+      for (Contact contact : customer.getContacts()) {
+        contacts.add(
+            new Contact(contact.getId(), customerId, contact.getType(), contact.getContact()));
+      }
+
+      resultCustomers.add(
+          new Customer(
+              customerId,
+              customer.getName(),
+              customer.getSurname(),
+              customer.getAge(),
+              customer.getCity(),
+              contacts));
+    }
+    return resultCustomers;
+  }
 }
