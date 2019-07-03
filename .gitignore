@@ -7,10 +7,6 @@
 **/*.iml
 **/*.ipr
 
-### CSV, XML ###
-**/*.csv
-**/*.xml
-
 ### Maven ###
 **/.mvn/
 **/mvn*
