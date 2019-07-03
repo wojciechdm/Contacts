@@ -15,7 +15,6 @@
         <lombok.version>1.18.6</lombok.version>
         <com.zaxxer.hikkaricp>3.2.0</com.zaxxer.hikkaricp>
         <spock.core.version>1.3-groovy-2.5</spock.core.version>
-        <cglib.version>3.2.11</cglib.version>
     </properties>
 
     <dependencies>
@@ -38,12 +37,6 @@
             <groupId>org.spockframework</groupId>
             <artifactId>spock-core</artifactId>
             <version>${spock.core.version}</version>
-            <scope>test</scope>
-        </dependency>
-        <dependency>
-            <groupId>cglib</groupId>
-            <artifactId>cglib-nodep</artifactId>
-            <version>${cglib.version}</version>
             <scope>test</scope>
         </dependency>
     </dependencies>
