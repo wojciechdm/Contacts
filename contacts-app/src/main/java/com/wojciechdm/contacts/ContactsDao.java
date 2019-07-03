@@ -1,52 +1,80 @@
 package com.wojciechdm.contacts;
 
+import lombok.AllArgsConstructor;
+
+import javax.sql.DataSource;
+import java.sql.*;
 import java.util.*;
 
-public class ContactsDao {
-	
-	private DatabaseConnector databaseConnector;	
-	
-	public ContactsDao() {
-		this.databaseConnector=new DatabaseConnector();
-	}
-	
-	private String getCustomerSaveSqlStatement(Customer customer) {
-		StringBuilder sqlStatement=new StringBuilder();
-		
-		sqlStatement.append("INSERT INTO customers VALUE (").append(customer.getId())
-		.append(",'").append(customer.getName()).append("','").append(customer.getSurname())
-		.append("',").append(customer.getAge()).append(",'").append(customer.getCity())
-		.append("')");		
-		return sqlStatement.toString();
-	}
-	
-	private String getContactSaveSqlStatement(Contact contact) {
-		StringBuilder sqlStatement=new StringBuilder();
-		
-		sqlStatement.append("INSERT INTO contacts VALUE (").append(contact.getId()).append(",")
-		.append(contact.getCustomerId()).append(",").append(contact.getType()).append(",'")
-		.append(contact.getContact()).append("')");
-		return sqlStatement.toString();
-	}
-	
-	public void saveContacts(List<Customer> customersList) {
-		List<String> sqlStatements=new LinkedList<>();
-		for(Customer customer: customersList) {
-			sqlStatements.add(getCustomerSaveSqlStatement(customer));
-			for (Contact contact: customer.getContactsList()) {
-				sqlStatements.add(getContactSaveSqlStatement(contact));
-			}
-		}		
-		databaseConnector.saveToDatabase(sqlStatements);		
-	}	
-	
-	public Long getLastCustomerId() {
-		Long customerId;
-		String lastCustomerIdSqlStatement = "SELECT MAX(id) FROM customers";
-		customerId=databaseConnector.getSingleLongValueFromDatabase(lastCustomerIdSqlStatement);
-		if (customerId==null) {
-			customerId=0L;
-		}
-		return customerId;
-	}
+@AllArgsConstructor
+class ContactsDao {
+
+  private final DataSource dataSource;
+
+  void save(List<Customer> customersList) {
+    List<String> sqlStatements = new LinkedList<>();
+    for (Customer customer : customersList) {
+      sqlStatements.add(createCustomerSaveSqlStatement(customer));
+      for (Contact contact : customer.getContacts()) {
+        sqlStatements.add(createContactSaveSqlStatement(contact));
+      }
+    }
+    trySave(sqlStatements);
+  }
+
+  long fetchLastCustomerId() {
+
+    try (Connection connection = dataSource.getConnection();
+        Statement statement = connection.createStatement()) {
+
+      ResultSet result = statement.executeQuery("SELECT MAX(id) FROM customers");
+      result.next();
+
+      return result.getLong(1);
+
+    } catch (SQLException exception) {
+      throw new IllegalStateException("Problem with database while fetching last id", exception);
+    }
+  }
+
+  private void trySave(List<String> sqlStatements) {
+    try (Connection connection = dataSource.getConnection();
+        Statement statement = connection.createStatement()) {
+
+      for (String sqlStatement : sqlStatements) {
+        statement.addBatch(sqlStatement);
+      }
+      statement.executeBatch();
+    } catch (SQLException exception) {
+      throw new IllegalStateException("Problem with database while saving customers", exception);
+    }
+  }
+
+  private String createCustomerSaveSqlStatement(Customer customer) {
+
+    return "INSERT INTO customers VALUE ("
+        + customer.getId()
+        + ",'"
+        + customer.getName()
+        + "','"
+        + customer.getSurname()
+        + "',"
+        + customer.getAge()
+        + ",'"
+        + customer.getCity()
+        + "')";
+  }
+
+  private String createContactSaveSqlStatement(Contact contact) {
+
+    return "INSERT INTO contacts VALUE ("
+        + contact.getId()
+        + ","
+        + contact.getCustomerId()
+        + ","
+        + contact.getType()
+        + ",'"
+        + contact.getContact()
+        + "')";
+  }
 }

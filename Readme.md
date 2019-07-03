@@ -13,13 +13,7 @@ Application was tested at machine with:
 
 ### Installing
 
-1. Go to `../contacts-app/src/main/java/com/wojciechdm/contacts/DatabaseConnector.java` and set database settings. Default setup is:
-
-   ```
-   "URI"="localhost:3306/contacts"
-   "USER"="user"
-   "PASSWORD"="password"
-   ```
+1. Go to `../contacts-app/src/main/resources/datasource.properties` file and set database settings. 
 
 2. Go to `../contacts-app/`  and use `mvn package` command to build a package.
 
