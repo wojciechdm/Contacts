@@ -9,25 +9,42 @@ import java.util.*;
 @AllArgsConstructor
 class ContactsDao {
 
+  private static final String INSERT_CUSTOMER_STATEMENT =
+      "INSERT INTO customers(id, name, surname, age, city) VALUES(?,?,?,?,?)";
+  private static final String INSERT_CONTACT_STATEMENT =
+      "INSERT INTO contacts(id, id_customer, type, contact) VALUES(?,?,?,?)";
+
   private final DataSource dataSource;
 
-  void save(List<Customer> customersList) {
-    List<String> sqlStatements = new LinkedList<>();
-    for (Customer customer : customersList) {
-      sqlStatements.add(createCustomerSaveSqlStatement(customer));
-      for (Contact contact : customer.getContacts()) {
-        sqlStatements.add(createContactSaveSqlStatement(contact));
-      }
+  void save(List<Customer> customers) {
+
+    try (Connection connection = dataSource.getConnection();
+        PreparedStatement insertCustomerStatement =
+            connection.prepareStatement(INSERT_CUSTOMER_STATEMENT);
+        PreparedStatement insertContactStatement =
+            connection.prepareStatement(INSERT_CONTACT_STATEMENT)) {
+
+      connection.setAutoCommit(false);
+
+      prepareInsertStatements(customers, insertCustomerStatement, insertContactStatement);
+
+      insertCustomerStatement.executeBatch();
+      insertContactStatement.executeBatch();
+
+      connection.commit();
+
+    } catch (SQLException exception) {
+      throw new IllegalStateException("Problem with database while saving customers", exception);
     }
-    trySave(sqlStatements);
   }
 
   long fetchLastCustomerId() {
 
     try (Connection connection = dataSource.getConnection();
-        Statement statement = connection.createStatement()) {
+        PreparedStatement statement =
+            connection.prepareStatement("SELECT MAX(id) FROM customers")) {
 
-      ResultSet result = statement.executeQuery("SELECT MAX(id) FROM customers");
+      ResultSet result = statement.executeQuery();
       result.next();
 
       return result.getLong(1);
@@ -37,44 +54,29 @@ class ContactsDao {
     }
   }
 
-  private void trySave(List<String> sqlStatements) {
-    try (Connection connection = dataSource.getConnection();
-        Statement statement = connection.createStatement()) {
+  private void prepareInsertStatements(
+      List<Customer> customers,
+      PreparedStatement insertCustomerStatement,
+      PreparedStatement insertContactStatement)
+      throws SQLException {
 
-      for (String sqlStatement : sqlStatements) {
-        statement.addBatch(sqlStatement);
+    for (Customer customer : customers) {
+
+      insertCustomerStatement.setLong(1, customer.getId());
+      insertCustomerStatement.setString(2, customer.getName());
+      insertCustomerStatement.setString(3, customer.getSurname());
+      insertCustomerStatement.setObject(4, customer.getAge());
+      insertCustomerStatement.setString(5, customer.getCity());
+      insertCustomerStatement.addBatch();
+
+      for (Contact contact : customer.getContacts()) {
+
+        insertContactStatement.setObject(1, contact.getId());
+        insertContactStatement.setLong(2, contact.getCustomerId());
+        insertContactStatement.setInt(3, contact.getType());
+        insertContactStatement.setString(4, contact.getContact());
+        insertContactStatement.addBatch();
       }
-      statement.executeBatch();
-    } catch (SQLException exception) {
-      throw new IllegalStateException("Problem with database while saving customers", exception);
     }
-  }
-
-  private String createCustomerSaveSqlStatement(Customer customer) {
-
-    return "INSERT INTO customers VALUE ("
-        + customer.getId()
-        + ",'"
-        + customer.getName()
-        + "','"
-        + customer.getSurname()
-        + "',"
-        + customer.getAge()
-        + ",'"
-        + customer.getCity()
-        + "')";
-  }
-
-  private String createContactSaveSqlStatement(Contact contact) {
-
-    return "INSERT INTO contacts VALUE ("
-        + contact.getId()
-        + ","
-        + contact.getCustomerId()
-        + ","
-        + contact.getType()
-        + ",'"
-        + contact.getContact()
-        + "')";
   }
 }
