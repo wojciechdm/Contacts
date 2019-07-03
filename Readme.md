@@ -1,4 +1,4 @@
-# Contacts
+﻿# Contacts
 
 Simple application to read contact data from CSV and XML files and write it to the database. Contact data include name, surname, optional age, city and any number of phone numbers, email addresses, jabber IDs and other contacts. 
 
@@ -7,7 +7,7 @@ Simple application to read contact data from CSV and XML files and write it to t
 Application was tested at machine with:
 
 - Windows 10 Home 64-bit buid 17134
-- Java build 1.8.0_181
+- Java build build 11.0.2+9-LTS
 - Maven 3.5.3
 - MySQL 8.0
 
