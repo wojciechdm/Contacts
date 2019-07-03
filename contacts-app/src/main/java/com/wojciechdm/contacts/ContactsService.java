@@ -46,7 +46,7 @@ class ContactsService {
 
       for (Contact contact : customer.getContacts()) {
         contacts.add(
-            new Contact(contact.getId(), customerId, contact.getType(), contact.getContact()));
+            new Contact(null, customerId, contact.getType(), contact.getContact()));
       }
 
       resultCustomers.add(
